@@ -6,32 +6,33 @@ import 'dart:math';
 import 'package:sensors_plus/sensors_plus.dart';
 
 /// Callback for phone shakes
-typedef void PhoneShakeCallback();
+typedef PhoneShakeCallback = void Function();
 
 /// ShakeDetector class for phone shake functionality
 class ShakeDetector {
-  /// User callback for phone shake
+  // Callback for phone shake
   final PhoneShakeCallback onPhoneShake;
 
-  /// Shake detection threshold
+  // Shake detection threshold
   final double shakeThresholdGravity;
 
-  /// Minimum time between shake
+  // Minimum time between shakes
   final int shakeSlopTimeMS;
 
-  /// Time before shake count resets
+  // Time before shake count resets
   final int shakeCountResetTime;
 
-  /// Number of shakes required before shake is triggered
+  // Number of shakes required before shake is triggered
   final int minimumShakeCount;
 
-  int mShakeTimestamp = DateTime.now().millisecondsSinceEpoch;
-  int mShakeCount = 0;
+  // Private variables
+  int _shakeTimestamp = DateTime.now().millisecondsSinceEpoch;
+  int _shakeCount = 0;
 
-  /// StreamSubscription for Accelerometer events
-  StreamSubscription? streamSubscription;
+  // StreamSubscription for Accelerometer events
+  StreamSubscription? _streamSubscription;
 
-  /// This constructor waits until [startListening] is called
+  // Constructor for waiting until startListening is called
   ShakeDetector.waitForStart({
     required this.onPhoneShake,
     this.shakeThresholdGravity = 2.7,
@@ -40,7 +41,7 @@ class ShakeDetector {
     this.minimumShakeCount = 1,
   });
 
-  /// This constructor automatically calls [startListening] and starts detection and callbacks.
+  // Constructor for automatically starting listening
   ShakeDetector.autoStart({
     required this.onPhoneShake,
     this.shakeThresholdGravity = 2.7,
@@ -51,46 +52,50 @@ class ShakeDetector {
     startListening();
   }
 
-  /// Starts listening to accelerometer events
+  // Start listening to accelerometer events
   void startListening() {
-    streamSubscription = accelerometerEvents.listen(
-      (AccelerometerEvent event) {
-        double x = event.x;
-        double y = event.y;
-        double z = event.z;
-
-        double gX = x / 9.80665;
-        double gY = y / 9.80665;
-        double gZ = z / 9.80665;
-
-        // gForce will be close to 1 when there is no movement.
-        double gForce = sqrt(gX * gX + gY * gY + gZ * gZ);
-
-        if (gForce > shakeThresholdGravity) {
-          var now = DateTime.now().millisecondsSinceEpoch;
-          // ignore shake events too close to each other (500ms)
-          if (mShakeTimestamp + shakeSlopTimeMS > now) {
-            return;
-          }
-
-          // reset the shake count after 3 seconds of no shakes
-          if (mShakeTimestamp + shakeCountResetTime < now) {
-            mShakeCount = 0;
-          }
-
-          mShakeTimestamp = now;
-          mShakeCount++;
-
-          if (mShakeCount >= minimumShakeCount) {
-            onPhoneShake();
-          }
-        }
-      },
-    );
+    _streamSubscription =
+        accelerometerEventStream().listen(_handleAccelerometerEvent);
   }
 
-  /// Stops listening to accelerometer events
+  // Stop listening to accelerometer events
   void stopListening() {
-    streamSubscription?.cancel();
+    _streamSubscription?.cancel();
+  }
+
+  // Handle accelerometer events
+  void _handleAccelerometerEvent(AccelerometerEvent event) {
+    final double x = event.x;
+    final double y = event.y;
+    final double z = event.z;
+
+    final double gX = x / 9.80665;
+    final double gY = y / 9.80665;
+    final double gZ = z / 9.80665;
+
+    // Calculate gForce
+    final double gForce = sqrt(gX * gX + gY * gY + gZ * gZ);
+
+    if (gForce > shakeThresholdGravity) {
+      final int now = DateTime.now().millisecondsSinceEpoch;
+
+      // Ignore shake events too close to each other (500ms)
+      if (_shakeTimestamp + shakeSlopTimeMS > now) {
+        return;
+      }
+
+      // Reset the shake count after 3 seconds of no shakes
+      if (_shakeTimestamp + shakeCountResetTime < now) {
+        _shakeCount = 0;
+      }
+
+      _shakeTimestamp = now;
+      _shakeCount++;
+
+      // Trigger onPhoneShake when the required shake count is reached
+      if (_shakeCount >= minimumShakeCount) {
+        onPhoneShake();
+      }
+    }
   }
 }
