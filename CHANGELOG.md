@@ -1,3 +1,7 @@
+## [2.2.2]
+
+- Updated `sensors_plus` dep
+
 ## [2.2.1]
 
 - Updated `sensors_plus` dep
